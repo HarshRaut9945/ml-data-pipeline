@@ -10,14 +10,14 @@ from dataclasses import dataclass
 from sklearn.model_selection import train_test_split
 
 
-@dataclass
-class DataIngestionConfig:
+@dataclass       #this class only store the file path -- This is configuration storage
+class DataIngestionConfig:  
     train_data_path=os.path.join("artifacts","train.csv")
     test_data_path=os.path.join("artifacts","test.csv")
     raw_data_path=os.path.join("artifacts","raw.csv")
 
 
-class DataIngestion:
+class DataIngestion:  #This class performs actual ingestion logic.
     def __init__(self):
         self.ingestion_config=DataIngestionConfig()
     
@@ -29,12 +29,14 @@ class DataIngestion:
             data=pd.read_csv(os.path.join("notebook/data","income_cleandata.csv"))
             
             logging.info("Data Reading Completed")
-
+              #Create Artifacts Folder
             os.makedirs(os.path.dirname(self.ingestion_config.raw_data_path),exist_ok=True)
-            
+             #Save Raw Data
+
             data.to_csv(self.ingestion_config.raw_data_path,index=False)
 
             logging.info("Data splited into train test")
+
             train_set,test_set=train_test_split(data,test_size=.30,random_state=42)
 
             train_set.to_csv(self.ingestion_config.train_data_path,index=False,header=True)
@@ -56,4 +58,5 @@ if __name__=="__main__":
     obj=DataIngestion()
     obj.inititate_data_ingestion()
 
-#src\components\data_ingestion.py
+#Creates object --Calls ingestion method
+
