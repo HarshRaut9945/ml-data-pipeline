@@ -1,127 +1,182 @@
-#Handle Missing Value
-# outlier tratment
-# Handle Imbalance dataset
-# Convert categorucal coluns into numerical columns  
+# Handle Missing Value
+# Outlier Treatment
+# Handle Imbalance Dataset
+# Convert Categorical Columns into Numerical Columns
 
-import os,sys
+import os
+import sys
 import pandas as pd
 import numpy as np
+
 from src.logger import logging
-from src.exception import CustmeException
-from sklearn.preprocessing import StandardScaler
-from sklearn.impute import SimpleImputer
-from dataclasses import dataclass
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
+from src.exception import CustomException
 from src.utils import save_object
 
+from dataclasses import dataclass
 
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+
+
+# Configuration Class
 @dataclass
-class DataTransfromartionConfigs:
-      preprocess_obj_file_patrh = os.path.join("artifacts/data_transformation", "preprcessor.pkl")
+class DataTransformationConfig:
+    preprocess_obj_file_path = os.path.join(
+        "artifacts", "data_transformation", "preprocessor.pkl"
+    )
 
+
+# Main Transformation Class
 class DataTransformation:
     def __init__(self):
-        self.data_transformation_config = DataTransfromartionConfigs()
+        self.data_transformation_config = DataTransformationConfig()
 
 
-def  get_data_transformation_obj(self):
-     try:
-           logging.info(" Data Transformation Started")
+    # Create preprocessing pipeline
+    def get_data_transformation_obj(self):
 
-           numerical_features = ['age', 'workclass',  'education_num', 'marital_status',
-            'occupation', 'relationship', 'race', 'sex', 'capital_gain',
-            'capital_loss', 'hours_per_week', 'native_country']
-           
-           num_pipeline=Pipeline(
+        try:
+            logging.info("Data Transformation Started")
+
+            numerical_features = [
+                'age',
+                'education_num',
+                'capital_gain',
+                'capital_loss',
+                'hours_per_week'
+            ]
+
+            categorical_features = [
+                'workclass',
+                'marital_status',
+                'occupation',
+                'relationship',
+                'race',
+                'sex',
+                'native_country'
+            ]
+
+            # Numerical Pipeline
+            num_pipeline = Pipeline(
                 steps=[
-                     ("imputer",SimpleImputer(strategy='median')),
-                     ("scaler",StandardScaler())
+                    ("imputer", SimpleImputer(strategy="median")),
+                    ("scaler", StandardScaler())
                 ]
-           )
-           preprocessor = ColumnTransformer([
+            )
+
+            # Categorical Pipeline
+            cat_pipeline = Pipeline(
+                steps=[
+                    ("imputer", SimpleImputer(strategy="most_frequent")),
+                    ("encoder", OneHotEncoder(handle_unknown="ignore"))
+                ]
+            )
+
+            # Column Transformer
+            preprocessor = ColumnTransformer([
                 ("num_pipeline", num_pipeline, numerical_features)
             ])
-             
-           return preprocessor
 
-     except Exception as e:
-            raise CustmeException(e, sys)
-     
+            logging.info("Preprocessing Pipeline Created")
 
-def remote_outliers_IQR(self, col, df):
-    try:
+            return preprocessor
+
+        except Exception as e:
+            raise CustomException(e, sys)
+
+
+    # Outlier Handling using IQR
+    def remove_outliers_IQR(self, col, df):
+
+        try:
             Q1 = df[col].quantile(0.25)
             Q3 = df[col].quantile(0.75)
 
-            iqr = Q3 - Q1
+            IQR = Q3 - Q1
 
-            upper_limit = Q3 + 1.5 * iqr
-            lowwer_limit = Q1 - 1.5 * iqr
+            upper_limit = Q3 + 1.5 * IQR
+            lower_limit = Q1 - 1.5 * IQR
 
-            df.loc[(df[col]>upper_limit), col] = upper_limit
-            df.loc[(df[col]<lowwer_limit), col] = lowwer_limit
+            df[col] = np.where(df[col] > upper_limit, upper_limit, df[col])
+            df[col] = np.where(df[col] < lower_limit, lower_limit, df[col])
 
             return df
-    
-    except Exception as e:
-            logging.info("Outluers handling code")
-            raise CustmeException(e, sys)
-    
 
-    
-def inititate_data_transformation(self, train_path, test_path):
-      
-      try:
+        except Exception as e:
+            logging.info("Outlier handling failed")
+            raise CustomException(e, sys)
+
+
+    # Apply Transformation
+    def initiate_data_transformation(self, train_path, test_path):
+
+        try:
+            logging.info("Reading Train and Test Data")
+
             train_data = pd.read_csv(train_path)
             test_data = pd.read_csv(test_path)
 
-            numerical_features = ['age', 'workclass',  'education_num', 'marital_status',
-            'occupation', 'relationship', 'race', 'sex', 'capital_gain',
-            'capital_loss', 'hours_per_week', 'native_country']
-    
+            numerical_features = [
+                'age',
+                'education_num',
+                'capital_gain',
+                'capital_loss',
+                'hours_per_week'
+            ]
+
+            # Handle Outliers for Train Data
             for col in numerical_features:
-                self.remote_outliers_IQR(col = col, df = train_data)
+                train_data = self.remove_outliers_IQR(col, train_data)
 
-            logging.info("Outliers capped on our train data")
+            logging.info("Outliers handled in train data")
 
+            # Handle Outliers for Test Data
             for col in numerical_features:
-                self.remote_outliers_IQR(col = col, df = test_data)
+                test_data = self.remove_outliers_IQR(col, test_data)
 
-            logging.info("Outliers capped on our test data")
-
-            preprocess_obj = self.get_data_transformation_obj()
-
-            
-            traget_columns = "income"
-            drop_columns = [traget_columns]
-
-            logging.info("Splitting train data into dependent and independent features")
-
-            input_feature_train_data = train_data.drop(drop_columns, axis = 1)
-            traget_feature_train_data = train_data[traget_columns]
-
-            logging.info("Splitting test data into dependent and independent features")
-            input_feature_ttest_data = test_data.drop(drop_columns, axis = 1)
-            traget_feature_test_data = test_data[traget_columns]
-
-            # Apply transfpormation on our train data and test data
-            input_train_arr = preprocess_obj.fit_transform(input_feature_train_data)
-            input_test_arr = preprocess_obj.transform(input_feature_ttest_data)
-
-              # Apply preprocessor object on our train data and test data
-            train_array = np.c_[input_train_arr, np.array(traget_feature_train_data)]
-            test_array = np.c_[input_test_arr, np.array(traget_feature_test_data)]
+            logging.info("Outliers handled in test data")
 
 
-            save_object(file_path=self.data_transformation_config.preprocess_obj_file_patrh,
-                        obj=preprocess_obj)
-            
-            return (train_array,
-                    test_array,
-                    self.data_transformation_config.preprocess_obj_file_patrh)
+            preprocessing_obj = self.get_data_transformation_obj()
+
+            target_column = "income"
+            drop_columns = [target_column]
+
+            logging.info("Splitting Input and Target Features")
+
+            input_feature_train = train_data.drop(columns=drop_columns)
+            target_feature_train = train_data[target_column]
+
+            input_feature_test = test_data.drop(columns=drop_columns)
+            target_feature_test = test_data[target_column]
 
 
-      
-      except Exception as e:
-            raise CustmeException(e, sys)
+            logging.info("Applying Preprocessing Object")
+
+            input_train_arr = preprocessing_obj.fit_transform(input_feature_train)
+            input_test_arr = preprocessing_obj.transform(input_feature_test)
+
+
+            # Combine features and target
+            train_arr = np.c_[input_train_arr, np.array(target_feature_train)]
+            test_arr = np.c_[input_test_arr, np.array(target_feature_test)]
+
+
+            logging.info("Saving Preprocessing Object")
+
+            save_object(
+                file_path=self.data_transformation_config.preprocess_obj_file_path,
+                obj=preprocessing_obj
+            )
+
+
+            return (
+                train_arr,
+                test_arr,
+                self.data_transformation_config.preprocess_obj_file_path
+            )
+
+        except Exception as e:
+            raise CustomException(e, sys)

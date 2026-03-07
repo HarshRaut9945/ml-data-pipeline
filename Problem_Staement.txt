@@ -1,0 +1,5 @@
+As We are working on Income Prediction problem associated with the adult income dataset.
+The goal is to acuurately predict wheter or person is making more or less than Rs50000 a year.
+while working through the problem staement
+
+

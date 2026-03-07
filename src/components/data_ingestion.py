@@ -3,18 +3,18 @@ import pandas as pd
 import numpy as np
 
 from src.logger import logging
-
-from src.exception import CustmeException
+from src.exception import CustomException
 
 from dataclasses import dataclass
 from sklearn.model_selection import train_test_split
+from src.components.data_transformation import DataTransformation
 
 
 @dataclass       #this class only store the file path -- This is configuration storage
 class DataIngestionConfig:  
-    train_data_path=os.path.join("artifacts","train.csv")
-    test_data_path=os.path.join("artifacts","test.csv")
-    raw_data_path=os.path.join("artifacts","raw.csv")
+    train_data_path=os.path.join("artifacts/data_ingestion","train.csv")
+    test_data_path=os.path.join("artifacts/data_ingestion","test.csv")
+    raw_data_path=os.path.join("artifacts/data_ingestion","raw.csv")
 
 
 class DataIngestion:  #This class performs actual ingestion logic.
@@ -51,12 +51,27 @@ class DataIngestion:  #This class performs actual ingestion logic.
 
         except Exception as e:
             logging.info("Error oocured in data ingestion state  ")
-            raise CustmeException(e,sys)
+            raise CustomException(e,sys)
         
 
+# if __name__=="__main__":
+#     obj=DataIngestion()
+#     treain_data_path , test_data_path = obj.inititate_data_ingestion()
+
+#     data_transformation = DataTransformation()
+#     train_arr, test_arr, _ = data_transformation.inititate_data_transformation(treain_data_path , test_data_path)
+
 if __name__=="__main__":
-    obj=DataIngestion()
-    obj.inititate_data_ingestion()
+    obj = DataIngestion()
+    train_data_path, test_data_path = obj.inititate_data_ingestion()
+
+    data_transformation = DataTransformation()
+
+    train_arr, test_arr, _ = data_transformation.initiate_data_transformation(
+        train_data_path,
+        test_data_path
+    )
+
 
 #Creates object --Calls ingestion method
 
