@@ -8,7 +8,7 @@ from src.exception import CustomException
 from dataclasses import dataclass
 from sklearn.model_selection import train_test_split
 from src.components.data_transformation import DataTransformation
-
+from src.components.model_trainer import ModelTrainer
 
 @dataclass       #this class only store the file path -- This is configuration storage
 class DataIngestionConfig:  
@@ -72,6 +72,8 @@ if __name__=="__main__":
         test_data_path
     )
 
+    modelTrainer = ModelTrainer()
 
+    modelTrainer.initiate_model_trainer(train_arr, test_arr)
 #Creates object --Calls ingestion method
 
